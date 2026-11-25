@@ -3,7 +3,8 @@ const cors = require('cors')
 const rateLimit = require('express-rate-limit')
 const Parser = require('rss-parser')
 
-const parser = new Parser()
+// Without a timeout a single slow feed could hold /api/news open for ~60s.
+const parser = new Parser({ timeout: 10000 })
 
 const PORT = process.env.PORT || 3000
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'https://hellenicdev.eu'
@@ -60,7 +61,7 @@ async function collectFeedItems(feeds, parseURL) {
       const data = await parseURL(feed.url)
       const items = Array.isArray(data && data.items) ? data.items : []
 
-      return items.slice(0, 5).map(item => ({
+      return items.filter(item => item && typeof item.title === 'string' && item.title.trim()).slice(0, 5).map(item => ({
         title: item.title,
         link: item.link,
         source: feed.name,
@@ -120,6 +121,10 @@ function createApp(options = {}) {
     res.json({ status: "PulseWire API running 🚀" })
   })
 
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok' })
+  })
+
   app.get('/api/news', async (req, res) => {
     try {
       const cached = cache.get()
@@ -136,8 +141,13 @@ function createApp(options = {}) {
             return { ok: false }
           }
 
+          // Newest first (the old random comparator gave a biased, unstable order).
+          const time = a => {
+            const t = Date.parse(a.published)
+            return Number.isFinite(t) ? t : 0
+          }
           const body = articles
-            .sort(() => Math.random() - 0.5)
+            .sort((a, b) => time(b) - time(a))
             .slice(0, 25)
 
           if (body.length > 0) cache.set(body)
@@ -159,6 +169,10 @@ function createApp(options = {}) {
       console.error(err)
       res.status(500).json({ error: "Failed to fetch RSS feeds" })
     }
+  })
+
+  app.use((req, res) => {
+    res.status(404).json({ error: 'Not found' })
   })
 
   return app
