@@ -66,3 +66,26 @@ h1 {
   padding: 20px;
   border-radius: 12px;
 }
+
+.loading {
+  text-align: center;
+  opacity: 0.75;
+  padding: 2rem 1rem;
+}
+
+.retry {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.card a:focus-visible,
+.retry:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
